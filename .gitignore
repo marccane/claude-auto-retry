@@ -1,0 +1,9 @@
+# npm artifacts — this project has zero dependencies, so these should never
+# be committed. They only appear if someone runs `npm install`.
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# Logs / OS cruft
+*.log
+.DS_Store
