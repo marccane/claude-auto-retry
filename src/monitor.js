@@ -1,4 +1,4 @@
-import { stripAnsi, isRateLimited, findRateLimitMessage, findSpendLimitMenuAction } from './patterns.js';
+import { stripAnsi, isRateLimited, findRateLimitMessage, findSpendLimitMenuAction, isLimitPrompt } from './patterns.js';
 import { parseResetTime, calculateWaitMs } from './time-parser.js';
 import { capturePane, sendKeys, sendKeySequence, getPaneCommand, isProcessForeground } from './tmux.js';
 import { loadConfig } from './config.js';
@@ -129,6 +129,14 @@ export async function processOneTick(state, tmuxAdapter, pane, config, isAlive) 
     return 'waiting';
   }
 
+  // Detect the interactive "What do you want to do?" prompt and auto-select
+  // the already-highlighted "Stop and wait for limit to reset" by pressing Enter.
+  if (isLimitPrompt(stripped)) {
+    state.waitUntil = Date.now() + 30_000;
+    await tmuxAdapter.sendKeys(pane, '');  // Empty text = just press Enter
+    return 'prompt-confirmed';
+  }
+
   return 'monitoring';
 }
 
@@ -156,6 +164,7 @@ export async function startMonitor(pane, pid) {
         state.lastRateLimitMessage = null;
       }
       if (result === 'selected-wait-for-reset') await logger.info('Detected Claude spend-limit menu and selected "Wait for limit to reset".');
+      if (result === 'prompt-confirmed') await logger.info('Limit prompt detected. Sent Enter to select "Stop and wait for limit to reset".');
       if (result === 'retried') await logger.info(`Sent retry message (attempt ${state.attempts})`);
       if (result === 'user-continued') await logger.info('User already continued. Attempt counter reset.');
       if (result === 'max-retries') await logger.warn(`Max retries (${config.maxRetries}) reached. Monitor still active but will not send further retries until rate limit clears.`);

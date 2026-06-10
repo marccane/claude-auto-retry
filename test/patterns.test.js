@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { stripAnsi, isRateLimited, findRateLimitMessage, findSpendLimitMenuAction } from '../src/patterns.js';
+import { stripAnsi, isRateLimited, findRateLimitMessage, findSpendLimitMenuAction, isLimitPrompt } from '../src/patterns.js';
 
 describe('stripAnsi', () => {
   it('removes bold codes', () => {
@@ -180,5 +180,27 @@ describe('stripAnsi (OSC sequences)', () => {
   it('rate limit detection works through OSC hyperlinks', () => {
     const input = '\x1b]8;;link\x1b\\5-hour limit reached\x1b]8;;\x1b\\ - resets 3pm';
     assert.ok(isRateLimited(input));
+  });
+});
+
+describe('isLimitPrompt', () => {
+  it('detects the "Stop and wait for limit to reset" prompt', () => {
+    const screen = [
+      'What do you want to do?',
+      '❯ 1. Stop and wait for limit to reset',
+      '  2. Upgrade your plan',
+    ].join('\n');
+    assert.ok(isLimitPrompt(screen));
+  });
+  it('does not fire on the spend-limit menu (handled separately)', () => {
+    const screen = [
+      'What do you want to do?',
+      '❯ 1. Adjust monthly spend limit',
+      '  2. Wait for limit to reset',
+    ].join('\n');
+    assert.equal(isLimitPrompt(screen), false);
+  });
+  it('does not fire on ordinary output', () => {
+    assert.equal(isLimitPrompt('just some normal claude output'), false);
   });
 });

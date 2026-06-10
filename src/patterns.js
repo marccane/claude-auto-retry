@@ -92,6 +92,20 @@ export function findRateLimitMessage(text, customPatterns = []) {
   return null;
 }
 
+// Detects the interactive Claude Code prompt asking the user to wait or upgrade:
+//   "What do you want to do?"
+//   "❯ 1. Stop and wait for limit to reset"
+//   "  2. Upgrade your plan"
+// This is a different dialog from the spend-limit menu handled by
+// findSpendLimitMenuAction (which offers "Adjust monthly spend limit"). Here
+// "Stop and wait" is already the default selection, so confirming it just
+// needs an Enter.
+export function isLimitPrompt(text) {
+  const stripped = stripAnsi(text);
+  return /What do you want to do\?/i.test(stripped) &&
+         /Stop and wait.*limit/i.test(stripped);
+}
+
 export function findSpendLimitMenuAction(text) {
   const lines = stripAnsi(text).split('\n');
   const promptIdx = lines.findLastIndex
