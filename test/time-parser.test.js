@@ -41,6 +41,11 @@ describe('parseResetTime', () => {
     assert.ok(r.relative);
     assert.equal(r.waitMs, 2 * 3_600_000);
   });
+  it('parses compound relative time "resets in 1h 25m"', () => {
+    const r = parseResetTime('resets in 1h 25m');
+    assert.ok(r.relative);
+    assert.equal(r.waitMs, 1 * 3_600_000 + 25 * 60_000);
+  });
   it('parses "wait 30 mins" as relative time', () => {
     const r = parseResetTime('wait 30 mins');
     assert.ok(r.relative);

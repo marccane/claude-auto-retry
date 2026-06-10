@@ -1,5 +1,5 @@
 const RESET_TIME_REGEX = /resets?\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:\(([^)]+)\))?/i;
-const RELATIVE_TIME_REGEX = /(?:try again|wait|resets?\s+in)[:\s]\s*(?:for\s+)?(?:in\s+)?(\d+)\s*(hours?|minutes?|mins?|h|m)\b/i;
+const RELATIVE_TIME_REGEX = /(?:try again|wait|resets?\s+in)[:\s]\s*(?:for\s+)?(?:in\s+)?(\d+\s*(?:hours?|minutes?|mins?|h|m)\s*(?:\d+\s*(?:hours?|minutes?|mins?|h|m))?)\b/i;
 
 export function parseResetTime(text) {
   // Try absolute time first: "resets at 3pm (UTC)"
@@ -17,13 +17,26 @@ export function parseResetTime(text) {
     return { hour, minute, timezone, ambiguous };
   }
 
-  // Try relative time: "try again in 5 minutes" / "wait 2 hours"
+  // Try relative time: "try again in 5 minutes" / "wait 2 hours" / "resets in 1h 25m"
   const relMatch = text.match(RELATIVE_TIME_REGEX);
   if (relMatch) {
-    const amount = parseInt(relMatch[1], 10);
-    const unit = relMatch[2].toLowerCase();
-    const isMinutes = unit.startsWith('m');
-    const ms = amount * (isMinutes ? 60_000 : 3_600_000);
+    const raw = relMatch[1];
+    const pairRegex = /(\d+)\s*(hours?|minutes?|mins?|h|m)/gi;
+    let ms = 0;
+    let match;
+    while ((match = pairRegex.exec(raw)) !== null) {
+      const amount = parseInt(match[1], 10);
+      const unit = match[2].toLowerCase();
+      const isMinutes = unit.startsWith('m');
+      ms += amount * (isMinutes ? 60_000 : 3_600_000);
+    }
+    // If regex matched but no pairs parsed (shouldn't happen), use first number as fallback
+    if (ms === 0) {
+      const fallback = raw.match(/(\d+)/);
+      if (fallback) {
+        ms = parseInt(fallback[1], 10) * 60_000;
+      }
+    }
     return { relative: true, waitMs: ms };
   }
 
